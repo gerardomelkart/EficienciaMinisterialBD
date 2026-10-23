@@ -28,8 +28,12 @@ IF OBJECT_ID(N'catalogo.entidad', N'U') IS NULL
 BEGIN
     CREATE TABLE catalogo.entidad
     (
-        id tinyint NOT NULL CONSTRAINT PK_entidad PRIMARY KEY CHECK(id BETWEEN 1 AND 32),
-        nombre nvarchar(80) NOT NULL UNIQUE
+        id tinyint NOT NULL CONSTRAINT PK_entidad PRIMARY KEY CHECK(id BETWEEN 0 AND 33),
+        clave nvarchar(3) NOT NULL UNIQUE,
+        nombre nvarchar(80) NOT NULL UNIQUE,
+        siglas nvarchar(10) NOT NULL,
+        siglas_renapo nvarchar(10) NOT NULL,
+        activo bit NOT NULL DEFAULT 1
     );
 END;
 IF OBJECT_ID(N'seguridad.usuario', N'U') IS NULL
