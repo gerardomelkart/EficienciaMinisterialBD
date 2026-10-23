@@ -6,7 +6,7 @@ Base SQL Server del proyecto Eficiencia Ministerial. Primera entrega para usuari
 
 Ejecutar con SSMS o sqlcmd en este orden, en una instancia de pruebas SQL Server 2019 o superior:
 
-1. `scripts/001_base.sql`: crea `EficienciaMinisterial` si no existe, esquemas, tablas, índices y secuencia de folios.
+1. `scripts/001_base.sql`: crea `EficienciaMinisterial_DEV` si no existe, esquemas, tablas, índices y secuencia de folios.
 2. `scripts/002_catalogos.sql`: agrega las cuatro corporaciones, FGR y el catálogo de entidades del SIIID (32 entidades, 0 = no aplica y 33 = Extranjero). No crea usuarios ni contraseñas.
 
 Los scripts pueden repetirse: crean objetos ausentes e insertan claves de catálogo faltantes. No actualizan ni reemplazan objetos existentes. Los cambios futuros se agregarán como migraciones numeradas; no se deben editar migraciones ya aplicadas. Se analizó su sintaxis con el parser T-SQL 2019 de Microsoft ScriptDom. No se conectaron ni ejecutaron estos scripts contra bases reales durante esta entrega.
@@ -38,3 +38,11 @@ La base RND de DBBridge es una fuente separada: no se crean ni modifican sus tab
 Se tomó de `gerardomelkart/SIIID2BD`, archivo `catalogos/Catalogos_1.sql`, commit `30311c04d0a2d49ad7e62b58398c0e3416e6dc2d`. Se conservan exactamente las 34 filas de referencia, incluidos `no aplica` y `Extranjero`. Los campos nuevos son adicionales al `id` y `nombre` utilizados por la API, por lo que no cambian las relaciones existentes en el código.
 
 Este ajuste modifica directamente los scripts iniciales porque la base todavía no se ha creado ni se han ejecutado las versiones anteriores. No incluye borrados, actualizaciones de datos ni un script de migración. Los usos permitidos de los registros especiales en cada operación se definirán con el área; no representan entidades federativas adicionales.
+
+## Entornos
+
+La base actual de desarrollo se llama `EficienciaMinisterial_DEV` y usa el servidor SQL remoto asignado al proyecto. El responsable la crea y ejecuta los scripts iniciales en ella. No utiliza LocalDB ni la base SIIID2_QA.
+
+La base productiva `EficienciaMinisterial` se creará al publicar a producción; no se crea en esta entrega. Entonces deberán prepararse los scripts con ese destino. La API mantiene la clave de configuración `ConnectionStrings:EficienciaMinisterial` para ambos entornos; el valor determina la base. Ver `docs/configuracion-entornos.md` en el repo de API para configurar User Secrets o entorno del servicio.
+
+Un login existente en SQL requiere mapeo y permisos sobre la nueva BD. Los permisos en SIIID2_QA no se heredan. No guardar usuarios reales, contraseñas ni cadenas completas en este repositorio público.

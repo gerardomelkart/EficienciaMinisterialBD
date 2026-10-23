@@ -1,12 +1,12 @@
 /* Ejecutar en SQL Server 2019 o superior. No elimina datos ni crea usuarios de prueba. */
 USE master;
 GO
-IF DB_ID(N'EficienciaMinisterial') IS NULL
+IF DB_ID(N'EficienciaMinisterial_DEV') IS NULL
 BEGIN
-    EXEC(N'CREATE DATABASE EficienciaMinisterial');
+    EXEC(N'CREATE DATABASE EficienciaMinisterial_DEV');
 END;
 GO
-USE EficienciaMinisterial;
+USE EficienciaMinisterial_DEV;
 GO
 SET XACT_ABORT ON;
 BEGIN TRANSACTION;
