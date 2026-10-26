@@ -46,7 +46,3 @@ La base actual de desarrollo se llama `EficienciaMinisterial_DEV` y usa el servi
 La base productiva `EficienciaMinisterial` se creará al publicar a producción; no se crea en esta entrega. Entonces deberán prepararse los scripts con ese destino. La API mantiene la clave de configuración `ConnectionStrings:EficienciaMinisterial` para ambos entornos; el valor determina la base. Ver `docs/configuracion-entornos.md` en el repo de API para configurar User Secrets o entorno del servicio.
 
 Un login existente en SQL requiere mapeo y permisos sobre la nueva BD. Los permisos en SIIID2_QA no se heredan. No guardar usuarios reales, contraseñas ni cadenas completas en este repositorio público.
-
-## Configuración desde base de datos
-
-Esta entrega requiere aplicar `003_configuracion.sql` del repositorio de BD antes de actualizar API y front. En una base existente no repetir la creación ni eliminar datos. Los catálogos, permisos y parámetros operativos se obtienen de SQL; ya no existen listas de instituciones, roles o ámbitos en el formulario. Ver `docs/configuracion.md` en EficienciaMinisterialBD para tablas, parámetros, permisos y orden de actualización. Conexión y claves permanecen en User Secrets o entorno.
