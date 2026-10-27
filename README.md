@@ -1,6 +1,42 @@
 # Eficiencia Ministerial BD
 
-Base SQL Server del proyecto Eficiencia Ministerial. Primera entrega para usuarios y recepción de archivos del módulo Primer Respondiente.
+Modelo y scripts SQL Server para persistir usuarios, catálogos, archivos y registros de captura de Eficiencia Ministerial. Este repositorio es la capa de datos; las operaciones se exponen mediante la API.
+
+## Proyecto Eficiencia Ministerial
+
+Eficiencia Ministerial es una plataforma en desarrollo para recibir información de detenciones y, en una etapa posterior, incorporar el seguimiento ministerial de las fiscalías. Su arquitectura contempla una API central y una base propia, con **Primer Respondiente** como primera interfaz de captura.
+
+Esta versión reúne la base técnica y el diseño inicial. Las reglas operativas definitivas están pendientes de respuesta del área responsable; las funcionalidades provisionales no deben interpretarse como un proceso productivo terminado.
+
+## Repositorios relacionados
+
+| Repositorio | Responsabilidad | Tecnología |
+| --- | --- | --- |
+| [PrimerRespondienteFront](https://github.com/gerardomelkart/PrimerRespondienteFront) | Interfaz de acceso, captura por Excel, navegación e informes provisionales. | Angular, TypeScript, Bootstrap |
+| [EficienciaMinisterialApi](https://github.com/gerardomelkart/EficienciaMinisterialApi) | Autenticación, autorización, validaciones, recepción de archivos y acceso a datos. | C#, ASP.NET Core, .NET 10 |
+| [EficienciaMinisterialBD](https://github.com/gerardomelkart/EficienciaMinisterialBD) | Esquemas, tablas, catálogos, índices y secuencia de folios. | SQL Server 2019 o superior |
+
+El navegador se comunica por HTTP con la API; la API consulta y persiste en SQL Server. **El front no se conecta directamente a la base.** Para ejecutar el sistema completo se requieren los tres repositorios.
+
+## Flujo y alcance
+
+El flujo implementado para las corporaciones permite descargar una plantilla, cargar un Excel, revisar errores y observaciones y confirmar una entrega para obtener un folio y un acuse HTML imprimible. El archivo original se conserva junto con los registros aceptados.
+
+El flujo previsto para fiscalías consiste en descargar una plantilla con información de referencia y completar los campos de seguimiento ministerial. Esa segunda etapa todavía no está implementada.
+
+- **Disponible:** autenticación JWT, perfiles iniciales, alta y listado de usuarios, carga y validación de Excel, confirmación con folio, acuse y registros de operación.
+- **Provisional:** pantallas de informes “Reporte primer respondiente” y “Reporte completo”, sin consultas ni indicadores definitivos.
+- **Pendiente:** catálogos y reglas definitivas, fiscalías estatales, plantilla de seguimiento, cruces automáticos, edición/baja de usuarios y reportes operativos.
+
+Las futuras conexiones con SIIID e Ingesta de Datos no están implementadas. El cruce con RND/RND_FA, a partir de las copias generadas por DBBridge, también está pendiente. No existe actualmente un integrador entre estos sistemas.
+
+## Puesta en marcha del conjunto
+
+1. Preparar una instancia SQL Server de pruebas y ejecutar los scripts del repositorio de BD.
+2. Configurar la conexión y la clave JWT fuera del código, crear el superusuario e iniciar la API.
+3. Instalar las dependencias del front e iniciar Angular con su proxy local.
+
+Cada repositorio detalla sus pasos más abajo. No se incluyen credenciales predeterminadas ni datos personales de ejemplo; las demostraciones deben utilizar datos ficticios.
 
 ## Instalación
 
@@ -37,12 +73,12 @@ La base RND de DBBridge es una fuente separada: no se crean ni modifican sus tab
 
 Se tomó de `gerardomelkart/SIIID2BD`, archivo `catalogos/Catalogos_1.sql`, commit `30311c04d0a2d49ad7e62b58398c0e3416e6dc2d`. Se conservan exactamente las 34 filas de referencia, incluidos `no aplica` y `Extranjero`. Los campos nuevos son adicionales al `id` y `nombre` utilizados por la API, por lo que no cambian las relaciones existentes en el código.
 
-Este ajuste modifica directamente los scripts iniciales porque la base todavía no se ha creado ni se han ejecutado las versiones anteriores. No incluye borrados, actualizaciones de datos ni un script de migración. Los usos permitidos de los registros especiales en cada operación se definirán con el área; no representan entidades federativas adicionales.
+Los registros especiales se conservan como parte de la referencia del SIIID; no representan entidades federativas adicionales. Su uso permitido en cada operación está pendiente de definición. En bases existentes, revisar su versión antes de aplicar cambios; no borrar ni recrear una base para actualizar el proyecto.
 
 ## Entornos
 
 La base actual de desarrollo se llama `EficienciaMinisterial_DEV` y usa el servidor SQL remoto asignado al proyecto. El responsable la crea y ejecuta los scripts iniciales en ella. No utiliza LocalDB ni la base SIIID2_QA.
 
-La base productiva `EficienciaMinisterial` se creará al publicar a producción; no se crea en esta entrega. Entonces deberán prepararse los scripts con ese destino. La API mantiene la clave de configuración `ConnectionStrings:EficienciaMinisterial` para ambos entornos; el valor determina la base. Ver `docs/configuracion-entornos.md` en el repo de API para configurar User Secrets o entorno del servicio.
+La base productiva `EficienciaMinisterial` se creará al publicar a producción; no se crea en esta entrega. Entonces deberán prepararse los scripts con ese destino. La API mantiene la clave de configuración `ConnectionStrings:EficienciaMinisterial` para ambos entornos; el valor determina la base. Ver la [guía de configuración de la API](https://github.com/gerardomelkart/EficienciaMinisterialApi/blob/main/docs/configuracion-entornos.md) para configurar User Secrets o entorno del servicio.
 
 Un login existente en SQL requiere mapeo y permisos sobre la nueva BD. Los permisos en SIIID2_QA no se heredan. No guardar usuarios reales, contraseñas ni cadenas completas en este repositorio público.
