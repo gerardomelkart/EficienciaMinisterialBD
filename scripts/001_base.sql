@@ -63,7 +63,6 @@ BEGIN
         id_usuario int NOT NULL REFERENCES seguridad.usuario(id),
         institucion varchar(20) NOT NULL REFERENCES catalogo.institucion(codigo),
         nombre_archivo nvarchar(255) NOT NULL,
-        archivo varbinary(max) NOT NULL,
         sha256 char(64) NOT NULL,
         periodo_inicio date NOT NULL,
         periodo_fin date NOT NULL,

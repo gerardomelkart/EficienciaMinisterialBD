@@ -20,7 +20,7 @@ El navegador se comunica por HTTP con la API; la API consulta y persiste en SQL 
 
 ## Flujo y alcance
 
-El flujo implementado para las corporaciones permite descargar una plantilla, cargar un Excel, revisar errores y observaciones y confirmar una entrega para obtener un folio y un acuse HTML imprimible. El archivo original se conserva junto con los registros aceptados.
+El flujo implementado para las corporaciones permite descargar una plantilla, cargar un Excel, revisar errores y observaciones y confirmar una entrega para obtener un folio y un acuse PDF institucional generado bajo demanda. Se conservan los registros y metadatos de la entrega; no se almacenan archivos Excel ni PDF en la base o en el disco de la API.
 
 El flujo previsto para fiscalías consiste en descargar una plantilla con información de referencia y completar los campos de seguimiento ministerial. Esa segunda etapa todavía no está implementada.
 
@@ -48,6 +48,7 @@ Ejecutar con SSMS o sqlcmd en este orden, en una instancia de pruebas SQL Server
 4. `scripts/004_catalogos_ministeriales.sql`: incorpora 75 opciones de los cinco catálogos del área, incluida MASC (id 14) en conclusión. Conserva los identificadores del Excel y no reemplaza opciones existentes.
 
 5. `scripts/005_periodos_y_catalogos_captura.sql`: agrega el calendario de quincenas, perfiles, ámbitos, fueros y equivalencias de captura; las cargas nuevas utilizan id_periodo.
+6. `scripts/006_archivos_bajo_demanda.sql`: elimina la columna binaria archivo y su contenido existente. Se conservan filas, folios y metadatos. Ejecutar antes de iniciar la API de esta entrega.
 
 Aplicar las migraciones pendientes, en orden, antes de iniciar la API actualizada. La corrección de carga requiere el script 005. Usar una cuenta autorizada para migraciones.
 
@@ -63,7 +64,7 @@ Los scripts pueden repetirse: crean objetos ausentes e insertan claves de catál
 | `seguridad.usuario_acceso` | Asignaciones completas de perfil, institución y alcance nacional o entidad. |
 | `catalogo.opcion_ministerial` | Cinco catálogos del área, con grupo, id, descripción y estado activo. |
 | `seguridad.bitacora` | Inicios de sesión exitosos, altas y operaciones de carga. |
-| `primer_respondiente.carga` | Archivo original, SHA-256, periodo, propietario, estado, folio y fechas UTC. |
+| `primer_respondiente.carga` | Nombre y SHA-256 del archivo, periodo, propietario, estado, folio y fechas UTC. Sin binarios. |
 | `primer_respondiente.registro` | Los siete datos de captura y estado de cruce pendiente. |
 | `primer_respondiente.folio_seq` | Consecutivo para folios de entrega; admite huecos por rollback. |
 
@@ -100,3 +101,7 @@ La API llama primer_respondiente.GenerarPeriodos para completar el calendario ha
 Las quincenas disponibles cumplen habilitado = 1 y cerrado = 0. Estas columnas permiten administrar la recepción desde SQL. Todavía no se implementa el cierre automático por recepción de todas las corporaciones, ni el reemplazo de entregas.
 
 Las cargas nuevas guardan id_periodo y las fechas resueltas en SQL; el front no puede imponer fechas arbitrarias. Los borradores anteriores sin id_periodo deben validarse nuevamente. Se preservan los acuses y las cargas confirmadas anteriores.
+
+## Sin almacenamiento de archivos
+
+Los Excel de entrada se leen en memoria. La base conserva registros, nombre del archivo y SHA-256; no almacena Excel ni PDF. Las descargas se reconstruyen desde los datos persistidos. La migración 006 retira los binarios históricos sin eliminar registros ni entregas.
