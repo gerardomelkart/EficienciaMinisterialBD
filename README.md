@@ -47,7 +47,9 @@ Ejecutar con SSMS o sqlcmd en este orden, en una instancia de pruebas SQL Server
 3. `scripts/003_usuarios_y_validacion.sql`: agrega múltiples accesos por cuenta, conserva las cuentas previas, registra el objetivo de las ediciones y permite dejar fuero vacío. Los alcances FEDERAL anteriores se migran como NACIONAL en la tabla de accesos.
 4. `scripts/004_catalogos_ministeriales.sql`: incorpora 75 opciones de los cinco catálogos del área, incluida MASC (id 14) en conclusión. Conserva los identificadores del Excel y no reemplaza opciones existentes.
 
-Si la base ya tiene 001 y 002, aplicar únicamente 003 y 004 antes de iniciar la API actualizada. Usar una cuenta autorizada para migraciones.
+5. `scripts/005_periodos_y_catalogos_captura.sql`: agrega el calendario de quincenas, perfiles, ámbitos, fueros y equivalencias de captura; las cargas nuevas utilizan id_periodo.
+
+Aplicar las migraciones pendientes, en orden, antes de iniciar la API actualizada. La corrección de carga requiere el script 005. Usar una cuenta autorizada para migraciones.
 
 Los scripts pueden repetirse: crean objetos ausentes e insertan claves de catálogo faltantes. Las migraciones numeradas posteriores actualizan los objetos indicados sin borrar datos. Las migraciones 003 y posteriores actualizan los objetos que indiquen; no se deben editar migraciones ya aplicadas. Se analizó su sintaxis con el parser T-SQL 2019 de Microsoft ScriptDom. No se conectaron ni ejecutaron estos scripts contra bases reales durante esta entrega.
 
@@ -88,3 +90,13 @@ La base actual de desarrollo se llama `EficienciaMinisterial_DEV` y usa el servi
 La base productiva `EficienciaMinisterial` se creará al publicar a producción; no se crea en esta entrega. Entonces deberán prepararse los scripts con ese destino. La API mantiene la clave de configuración `ConnectionStrings:EficienciaMinisterial` para ambos entornos; el valor determina la base. Ver la [guía de configuración de la API](https://github.com/gerardomelkart/EficienciaMinisterialApi/blob/main/docs/configuracion-entornos.md) para configurar User Secrets o entorno del servicio.
 
 Un login existente en SQL requiere mapeo y permisos sobre la nueva BD. Los permisos en SIIID2_QA no se heredan. No guardar usuarios reales, contraseñas ni cadenas completas en este repositorio público.
+
+## 005 — Periodos quincenales y catálogos de captura
+
+Ejecutar scripts/005_periodos_y_catalogos_captura.sql después de 004. Agrega perfiles, ámbitos, equivalencias de corporaciones/entidades, fueros y un calendario de quincenas. La instalación utiliza junio de 2025 como origen histórico, conforme al cuestionario. No modifica las fechas de las cargas existentes.
+
+La API llama primer_respondiente.GenerarPeriodos para completar el calendario hasta la fecha actual de México. El procedimiento es transaccional e idempotente. La cuenta de API necesita EXECUTE sobre ese procedimiento, SELECT sobre primer_respondiente.periodo y SELECT sobre los catálogos nuevos. La cadena de propiedad permite generar los periodos sin otorgarle permisos generales de instalación.
+
+Las quincenas disponibles cumplen habilitado = 1 y cerrado = 0. Estas columnas permiten administrar la recepción desde SQL. Todavía no se implementa el cierre automático por recepción de todas las corporaciones, ni el reemplazo de entregas.
+
+Las cargas nuevas guardan id_periodo y las fechas resueltas en SQL; el front no puede imponer fechas arbitrarias. Los borradores anteriores sin id_periodo deben validarse nuevamente. Se preservan los acuses y las cargas confirmadas anteriores.
