@@ -6,7 +6,7 @@ Modelo y scripts SQL Server para persistir usuarios, catálogos, archivos y regi
 
 Eficiencia Ministerial es una plataforma en desarrollo para recibir información de detenciones y, en una etapa posterior, incorporar el seguimiento ministerial de las fiscalías. Su arquitectura contempla una API central y una base propia, con **Primer Respondiente** como primera interfaz de captura.
 
-Esta versión reúne la base técnica y el diseño inicial. Las reglas operativas definitivas están pendientes de respuesta del área responsable; las funcionalidades provisionales no deben interpretarse como un proceso productivo terminado.
+Esta versión incorpora las primeras reglas confirmadas del cuestionario: usuarios con múltiples accesos y validación básica de la captura. El seguimiento de fiscalías, el cruce con RND y los reportes productivos siguen en desarrollo.
 
 ## Repositorios relacionados
 
@@ -24,9 +24,9 @@ El flujo implementado para las corporaciones permite descargar una plantilla, ca
 
 El flujo previsto para fiscalías consiste en descargar una plantilla con información de referencia y completar los campos de seguimiento ministerial. Esa segunda etapa todavía no está implementada.
 
-- **Disponible:** autenticación JWT, perfiles iniciales, alta y listado de usuarios, carga y validación de Excel, confirmación con folio, acuse y registros de operación.
+- **Disponible:** autenticación JWT, selección de acceso, alta/edición/activación de usuarios, carga y validación de Excel, confirmación con folio, acuse y registros de operación.
 - **Provisional:** pantallas de informes “Reporte primer respondiente” y “Reporte completo”, sin consultas ni indicadores definitivos.
-- **Pendiente:** catálogos y reglas definitivas, fiscalías estatales, plantilla de seguimiento, cruces automáticos, edición/baja de usuarios y reportes operativos.
+- **Pendiente:** catálogo definitivo de fiscalías, plantilla de seguimiento, cruces automáticos, control de quincenas y reportes operativos.
 
 Las futuras conexiones con SIIID e Ingesta de Datos no están implementadas. El cruce con RND/RND_FA, a partir de las copias generadas por DBBridge, también está pendiente. No existe actualmente un integrador entre estos sistemas.
 
@@ -44,8 +44,12 @@ Ejecutar con SSMS o sqlcmd en este orden, en una instancia de pruebas SQL Server
 
 1. `scripts/001_base.sql`: crea `EficienciaMinisterial_DEV` si no existe, esquemas, tablas, índices y secuencia de folios.
 2. `scripts/002_catalogos.sql`: agrega las cuatro corporaciones, FGR y el catálogo de entidades del SIIID (32 entidades, 0 = no aplica y 33 = Extranjero). No crea usuarios ni contraseñas.
+3. `scripts/003_usuarios_y_validacion.sql`: agrega múltiples accesos por cuenta, conserva las cuentas previas, registra el objetivo de las ediciones y permite dejar fuero vacío. Los alcances FEDERAL anteriores se migran como NACIONAL en la tabla de accesos.
+4. `scripts/004_catalogos_ministeriales.sql`: incorpora 75 opciones de los cinco catálogos del área, incluida MASC (id 14) en conclusión. Conserva los identificadores del Excel y no reemplaza opciones existentes.
 
-Los scripts pueden repetirse: crean objetos ausentes e insertan claves de catálogo faltantes. No actualizan ni reemplazan objetos existentes. Los cambios futuros se agregarán como migraciones numeradas; no se deben editar migraciones ya aplicadas. Se analizó su sintaxis con el parser T-SQL 2019 de Microsoft ScriptDom. No se conectaron ni ejecutaron estos scripts contra bases reales durante esta entrega.
+Si la base ya tiene 001 y 002, aplicar únicamente 003 y 004 antes de iniciar la API actualizada. Usar una cuenta autorizada para migraciones.
+
+Los scripts pueden repetirse: crean objetos ausentes e insertan claves de catálogo faltantes. Las migraciones numeradas posteriores actualizan los objetos indicados sin borrar datos. Las migraciones 003 y posteriores actualizan los objetos que indiquen; no se deben editar migraciones ya aplicadas. Se analizó su sintaxis con el parser T-SQL 2019 de Microsoft ScriptDom. No se conectaron ni ejecutaron estos scripts contra bases reales durante esta entrega.
 
 ## Modelo inicial
 
@@ -53,21 +57,23 @@ Los scripts pueden repetirse: crean objetos ausentes e insertan claves de catál
 |---|---|
 | `catalogo.institucion` | Corporaciones y fiscalías. Fiscalías estatales pendientes del catálogo autorizado. |
 | `catalogo.entidad` | Catálogo del SIIID: id, clave, nombre, siglas, siglas RENAPO y activo. |
-| `seguridad.usuario` | Hash BCrypt, perfil, institución, ámbito, entidad y estado activo. |
+| `seguridad.usuario` | Cuenta, hash BCrypt, estado activo y asignación primaria de compatibilidad. |
+| `seguridad.usuario_acceso` | Asignaciones completas de perfil, institución y alcance nacional o entidad. |
+| `catalogo.opcion_ministerial` | Cinco catálogos del área, con grupo, id, descripción y estado activo. |
 | `seguridad.bitacora` | Inicios de sesión exitosos, altas y operaciones de carga. |
 | `primer_respondiente.carga` | Archivo original, SHA-256, periodo, propietario, estado, folio y fechas UTC. |
 | `primer_respondiente.registro` | Los siete datos de captura y estado de cruce pendiente. |
 | `primer_respondiente.folio_seq` | Consecutivo para folios de entrega; admite huecos por rollback. |
 
-Una carga VALIDADA aún no es una entrega. La API confirma con bloqueo de fila, asigna folio y registra bitácora dentro de la misma transacción. Los identificadores internos no dependen del folio RND. No se aplica restricción única al folio RND porque la política de repetidos/operaciones conjuntas está pendiente.
+Una carga VALIDADA aún no es una entrega. La API confirma con bloqueo de fila, asigna folio y registra bitácora dentro de la misma transacción. Los identificadores internos no dependen del folio RND. No se aplica restricción única al folio RND: un folio puede tener varias personas y corporaciones. El cruce consolidado y la bandera de duplicados están pendientes de implementación.
 
-El primer superusuario se crea mediante el comando local de la API documentado en su README. No insertar contraseñas en texto plano. La cuenta de aplicación necesita SELECT sobre catálogos; SELECT/INSERT en usuarios; INSERT en bitácora; SELECT/INSERT/UPDATE en cargas; SELECT/INSERT en registros y UPDATE sobre la secuencia de folios. Usar otra cuenta para instalar migraciones. Los permisos de edición/baja se definirán con sus operaciones futuras.
+El primer superusuario se crea mediante el comando local de la API documentado en su README. No insertar contraseñas en texto plano. La cuenta de aplicación necesita SELECT sobre catálogos; SELECT/INSERT/UPDATE en seguridad.usuario; SELECT/INSERT/DELETE en seguridad.usuario_acceso; INSERT en seguridad.bitacora; SELECT/INSERT/UPDATE en cargas; SELECT/INSERT en registros y UPDATE sobre la secuencia de folios. La administración usa `sys.sp_getapplock` con propietario Transaction y el principal predeterminado public. No requiere db_owner. Usar otra cuenta para instalar migraciones.
 
 ## Decisiones pendientes
 
-Catálogo de autoridades/fiscalías estatales, alcance definitivo de usuarios, periodos, duplicados, asignación de fiscalía, cruce con RND, seguimiento ministerial, cierres e indicadores. La información de la corporación no se sobrescribirá con RND ni con fiscalías. `homologar_a_diccionario` queda excluida.
+Catálogo definitivo de fiscalías; asignación y reasignación; adolescentes/identidad reservada; conteo cuando un folio tiene varias personas con resultados distintos; denominadores de indicadores; agrupación temporal de gráficas y corte de respuestas de fiscalías.
 
-La base RND de DBBridge es una fuente separada: no se crean ni modifican sus tablas aquí. Sus tablas diarias son `tablero_rnd_yyyyMMdd` y `tablero_rnd_yyyyMMdd_fa`. La selección del corte y el tratamiento de RND_FA quedan pendientes de confirmación.
+El cruce con RND, el control de quincenas y el seguimiento ministerial aún no están implementados. La información de la corporación no se sobrescribirá con RND ni con fiscalías. `homologar_a_diccionario` queda excluida. RND_FA no se utiliza para el seguimiento: las faltas administrativas quedan excluidas.
 
 ## Referencia del catálogo de entidades
 
