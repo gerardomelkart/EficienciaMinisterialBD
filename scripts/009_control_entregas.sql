@@ -1,6 +1,7 @@
 USE EficienciaMinisterial_DEV;
 GO
 SET XACT_ABORT ON;
+BEGIN TRY
 BEGIN TRANSACTION;
 IF COL_LENGTH('primer_respondiente.carga', 'vigente') IS NULL
     ALTER TABLE primer_respondiente.carga ADD vigente bit NOT NULL CONSTRAINT DF_carga_vigente DEFAULT 1;
@@ -18,14 +19,21 @@ SELECT p.id, i.codigo FROM primer_respondiente.periodo p CROSS JOIN catalogo.ins
 WHERE i.tipo = 'CORPORACION' AND i.activo = 1
     AND NOT EXISTS(SELECT 1 FROM primer_respondiente.periodo_corporacion d WHERE d.id_periodo = p.id AND d.institucion = i.codigo);
 IF NOT EXISTS(SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID('primer_respondiente.carga') AND name = 'IX_carga_periodo_vigente')
-    CREATE INDEX IX_carga_periodo_vigente ON primer_respondiente.carga(id_periodo, institucion, estado, vigente);
+    EXEC sys.sp_executesql N'CREATE INDEX IX_carga_periodo_vigente ON primer_respondiente.carga(id_periodo, institucion, estado, vigente);';
+-- Se compila después del ALTER: SQL Server no reconoce columnas recién agregadas
+-- en consultas estáticas sobre tablas existentes dentro del mismo lote.
 -- Se preserva el histórico; sólo la última entrega de cada corporación/quincena es vigente.
-;WITH orden AS (
+EXEC sys.sp_executesql N';WITH orden AS (
     SELECT vigente, ROW_NUMBER() OVER(PARTITION BY id_periodo, institucion ORDER BY confirmado_utc DESC, folio DESC, id DESC) AS numero
-    FROM primer_respondiente.carga WHERE estado = 'CONFIRMADA' AND id_periodo IS NOT NULL
+    FROM primer_respondiente.carga WHERE estado = ''CONFIRMADA'' AND id_periodo IS NOT NULL
 )
-UPDATE orden SET vigente = CASE WHEN numero = 1 THEN 1 ELSE 0 END;
+UPDATE orden SET vigente = CASE WHEN numero = 1 THEN 1 ELSE 0 END;';
 COMMIT;
+END TRY
+BEGIN CATCH
+    IF XACT_STATE() <> 0 ROLLBACK;
+    THROW;
+END CATCH;
 GO
 
 CREATE OR ALTER TRIGGER primer_respondiente.tr_periodo_corporaciones
