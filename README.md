@@ -105,3 +105,25 @@ Las cargas nuevas guardan id_periodo y las fechas resueltas en SQL; el front no 
 ## Sin almacenamiento de archivos
 
 Los Excel de entrada se leen en memoria. La base conserva registros, nombre del archivo y SHA-256; no almacena Excel ni PDF. Las descargas se reconstruyen desde los datos persistidos. La migración 006 retira los binarios históricos sin eliminar registros ni entregas.
+
+
+### Primer inicio de sesión
+
+Aplicar `EficienciaMinisterialBD/scripts/007_primer_login.sql` antes de iniciar la API actualizada.
+Las cuentas existentes y nuevas deben cambiar su contraseña antes de acceder a los módulos.
+Las cuentas con cualquier acceso `SUPER_USUARIO` quedan exentas. El cambio exige contraseña actual,
+nueva diferente de al menos 12 caracteres y confirmación; se registra en bitácora.
+La API bloquea las operaciones hasta completar el cambio. El indicador se desactiva al guardarlo.
+La confirmación rechaza el mismo SHA-256 para una corporación y periodo ya confirmados,
+incluso en solicitudes concurrentes; no se guardan archivos originales.
+
+
+### Cruce diario RND y control de entregas
+
+Aplicar las migraciones 007, 008 y 009 de EficienciaMinisterialBD; configurar en la API
+`ConnectionStrings:RndDestino` fuera del repositorio. La validación consulta la última tabla diaria
+completa del destino DBBridge y conserva referencias RND, fuente y fecha sin guardar el Excel.
+Los no localizados requieren consentimiento expreso. La última carga de una corporación/quincena
+es la vigente y se preservan las anteriores; la quincena cierra al completar las corporaciones esperadas.
+El cruce de validación está implementado; plantillas y seguimiento de fiscalías e informes finales
+siguen pendientes. Ver docs/revision-carga-y-catalogos.md en el repositorio de API.
