@@ -18,7 +18,11 @@ SELECT @restriccion=k.name FROM sys.key_constraints k
 WHERE k.parent_object_id=OBJECT_ID('fiscalia.entrega') AND k.type='UQ'
 AND (SELECT COUNT(*) FROM sys.index_columns c WHERE c.object_id=k.parent_object_id AND c.index_id=k.unique_index_id AND key_ordinal>0)=3
 AND NOT EXISTS(SELECT 1 FROM sys.index_columns c WHERE c.object_id=k.parent_object_id AND c.index_id=k.unique_index_id AND key_ordinal>0 AND COL_NAME(c.object_id,c.column_id) NOT IN ('inicio','fin','entidad'));
-IF @restriccion IS NOT NULL EXEC(N'ALTER TABLE fiscalia.entrega DROP CONSTRAINT '+QUOTENAME(@restriccion));
+IF @restriccion IS NOT NULL
+BEGIN
+    DECLARE @sql nvarchar(max) = N'ALTER TABLE fiscalia.entrega DROP CONSTRAINT ' + QUOTENAME(@restriccion);
+    EXEC sys.sp_executesql @sql;
+END;
 IF NOT EXISTS(SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID('fiscalia.entrega') AND name='UX_entrega_vigente')
     EXEC(N'CREATE UNIQUE INDEX UX_entrega_vigente ON fiscalia.entrega(inicio,fin,entidad) WHERE vigente=1');
 IF OBJECT_ID('seguridad.reapertura','U') IS NULL
